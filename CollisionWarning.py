@@ -9,7 +9,7 @@ robot = Create3(Bluetooth())   # Put robot name here.
 # will stop and turn on a solid red light
 # when any button or bumper is pressed.
 # --------------------------------------------------------
-
+print("hi")
 # EITHER BUTTON
 @event(robot.when_touched, [True, True])  # User buttons: [(.), (..)]
 async def when_either_touched(robot):
