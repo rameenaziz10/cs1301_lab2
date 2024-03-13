@@ -9,16 +9,19 @@ robot = Create3(Bluetooth())   # Put robot name here.
 # will stop and turn on a solid red light
 # when any button or bumper is pressed.
 # --------------------------------------------------------
-print("hi")
+
 # EITHER BUTTON
 @event(robot.when_touched, [True, True])  # User buttons: [(.), (..)]
 async def when_either_touched(robot):
-    pass
+    global buttonpress
+    buttonpress = True
 
 # EITHER BUMPER
 @event(robot.when_bumped, [True, True])  # [left, right]
 async def when_either_bumped(robot):
-    pass
+    global buttonpress
+    buttonpress = True
+
 
 # --------------------------------------------------------
 # Implement avoidCollision() so that the robot CONTINUOUSLY 
@@ -34,7 +37,35 @@ async def when_either_bumped(robot):
 
 @event(robot.when_play)
 async def avoidCollision(robot):
-    pass
+    if not buttonpress:
+        readings = (await robot.get_ir_proximity())
+        middle = readings[3]
+        distance = 4095 / (middle + 1)
+        if distance <= 5:
+            speed = 0
+            color = 255,0,0
+            note = Note.D7
+        elif distance <= 30:
+            speed = 1
+            color = 255,165,0
+            note = Note.D6
+        elif distance <= 100:
+            speed = 4
+            color = 255,255,0
+            note = Note.D5
+        elif distance > 100:
+            color = 0,255,0
+            speed = 8
+            note = ""
+        await robot.set_lights_rgb(color)
+        await robot.set_wheel_speeds(speed,speed)
+        if type(note) != str:
+            await robot.play_note(note,1)
+            
+    else:
+        await robot.set_lights_rgb(255,0,0)
+        await robot.set_wheel_speeds(0,0)
+
 
 # start the robot
 robot.play()

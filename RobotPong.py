@@ -39,8 +39,25 @@ async def robotPong(robot):
     """
     Use the following two lines somewhere in your code to calculate the
     angle and direction of reflection from a list of IR readings:
-        (approx_dist, approx_angle) = angleOfClosestWall(ir_readings)
-        (direction, turningAngle) = calculateReflectionAngle(approx_angle)
+    """
+    speed = 15
+    ir_readings = (await robot.get_ir_proximity()).sensors
+    (approx_dist, approx_angle) = angleOfClosestWall(ir_readings)
+    (direction, turningAngle) = calculateReflectionAngle(approx_angle)
+    if approx_dist < 20:
+        await robot.set_wheel_speeds(0,0)
+        await robot.set_lights_rgb(255,0,255)
+        if direction == "right":
+            await robot.turn_right(turningAngle)
+        if direction == "left":
+            await robot.turn_left(turningAngle)
+        await robot.move(5)
+    else:
+        await robot.set_lights_rgb(0,255,255)
+        await robot.set_wheel_speeds(speed, speed)
+
+
+    """
     Then, if the closest wall is less than 20 cm away, use the
     direction and the turningAngle to determine how to rotate the robot to
     reflect.
@@ -48,12 +65,27 @@ async def robotPong(robot):
     pass
 
 def angleOfClosestWall(readings):
-    """Remember that this function can be autograded!"""
     IR_ANGLES = [-65.3, -38.0, -20.0, -3.0, 14.25, 34.0, 65.3]
+    max = 0 
+    closest = 0
+    for index, i in enumerate(readings):
+        if i > max:
+            max = i
+            closest = IR_ANGLES[index]
+    max = 4095 / (max + 1)
+    max = round(max, 3)
+    return max, closest
 
 def calculateReflectionAngle(angle):
-    """Remember that this function can be autograded!"""
-    pass
+    direc = ""
+    if angle >= 0:
+        direc = "left"
+        angle = 180 - 2 * angle
+    elif angle < 0:
+        direc = "right"
+        angle = 180 + 2 * angle
+    angle = round(angle, 3)
+    return direc, angle
 
 # start the robot
 robot.play()
