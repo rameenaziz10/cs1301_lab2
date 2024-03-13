@@ -21,3 +21,39 @@ def calculateReflectionAngle(angle):
         angle = 180 + 2 * angle
     angle = round(angle, 3)
     return direc, angle
+
+import math as m
+def farthestDistance(currPosition, positions):
+    x1, y1 = currPosition
+    maxdist = 0
+    maxpos = (0,)
+    for tup in positions:
+        x2, y2 = tup
+        distance = m.sqrt(m.fabs((x2 - x1)**2  + (y2 - y1)**2))
+        print(distance)
+        if distance > maxdist:
+            maxdist = distance
+            maxpos = x2, y2
+    return maxpos   
+
+def movementDirection(readings):
+    max = 0
+    sensorIndex = -1
+    for i in range(len(readings)):
+        if readings[i] > max:
+            max = readings[i]
+            sensorIndex = i
+    if sensorIndex in [0, 1, 2]: 
+        direc = "clockwise"                            
+    elif sensorIndex in [4,5,6]:  
+        direc = "counterclockwise"    
+    return direc
+
+def checkPositionArrived(current_position, destination, threshold):
+    x1, y1 = current_position
+    x2, y2 = destination
+    distance = m.sqrt(m.fabs((x2 - x1)**2  + (y2 - y1)**2))
+    if distance <= threshold:
+        return True
+    else:
+        return False

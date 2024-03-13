@@ -32,26 +32,53 @@ ARRIVAL_THRESHOLD = 5    # We say that the robot has arrived at its final
 SPEED = 10               # The speed at which the robot should normally move.
 ROBOT_MOVE_DISTANCE = 15 # The distance by which the robot needs to move 
                          # to the side to sweep a new column of the box.
+BUTTONPRESS = False
 
 # --------------------------------------------------------
 # Implement these three helper functions so that they
 # can be used later on.
 # --------------------------------------------------------
-
+from math import sqrt as s
 # Helper Function 1
 def farthestDistance(currPosition, positions):
-    """Remember that this function can be autograded!"""
-    pass
+    x1, y1 = currPosition
+    maxdist = 0
+    maxpos = (0,)
+    for tup in positions:
+        x2, y2 = tup
+        distance = m.sqrt(m.fabs((x2 - x1)**2  + (y2 - y1)**2))
+        print(distance)
+        if distance > maxdist:
+            maxdist = distance
+            maxpos = x2, y2
+    return maxpos
 
 # Helper Function 2
 def movementDirection(readings):
-    """Remember that this function can be autograded!"""
-    pass
+    max = 0
+    sensorIndex = -1
+    for i in range(len(readings)):
+        if readings[i] >= 20:
+            if readings[i] > max:
+                max = readings[i]
+                sensorIndex = i
+    if sensorIndex in [0, 1, 2]: 
+        direc = "clockwise"                            
+            
+    elif sensorIndex in [4,5,6]:  
+        direc = "counterclockwise"    
+    return direc        
+            
 
 # Helper Function 3
 def checkPositionArrived(current_position, destination, threshold):
-    """Remember that this function can be autograded!"""
-    pass
+    x1, y1 = current_position
+    x2, y2 = destination
+    distance = m.sqrt(m.fabs((x2 - x1)**2  + (y2 - y1)**2))
+    if distance <= threshold:
+        return True
+    else:
+        return False
 
 # --------------------------------------------------------
 # Implement the these two functions so that the robot
@@ -61,13 +88,17 @@ def checkPositionArrived(current_position, destination, threshold):
 
 # EITHER BUTTON
 @event(robot.when_touched, [True, True])  # User buttons: [(.), (..)]
-async def when_either_button_touched(robot):
-    pass
+async def when_either_touched(robot):
+    global BUTTONPRESS
+    BUTTONPRESS = True
+    
 
 # EITHER BUMPER
 @event(robot.when_bumped, [True, True])  # [left, right]
 async def when_either_bumped(robot):
-    pass
+    global BUTTONPRESS
+    BUTTONPRESS = True
+
 
 # --------------------------------------------------------
 # Implement play such that the robot:
@@ -89,7 +120,29 @@ async def play(robot):
     global HAS_COLLIDED, HAS_EXPLORED, HAS_SWEPT, SENSOR2CHECK
     global ROTATION_DIR, CORNERS, DESTINATION, ARRIVAL_THRESHOLD
     global SPEED, ROBOT_MOVE_DISTANCE
-    pass
+    #find position and sensor readings % reset navigation
+    pos = await robot.get_position()
+    readings = (await robot.get_ir_proximity()).sensors
+    await robot.reset_navigation()
+    #assign global variables based off of proximity to walls
+    ROTATION_DIR = movementDirection(readings)
+    if ROTATION_DIR == "clockwise":
+        SENSOR2CHECK = 0
+    else:
+        SENSOR2CHECK = 6
+    #set wheel speed
+    await robot.wheel_speeds(SPEED, SPEED)
+    #use explore and sweep functions
+    while not HAS_EXPLORED:
+        await explore(robot,readings,pos)
+        if HAS_COLLIDED or checkPositionArrived(pos, DESTINATION, ARRIVAL_THRESHOLD):
+            break
+    while not HAS_SWEPT:
+        await sweep()
+        if HAS_COLLIDED or checkPositionArrived(pos, DESTINATION, ARRIVAL_THRESHOLD):
+            break
+        
+
 
 
 # --------------------------------------------------------
@@ -103,11 +156,24 @@ async def play(robot):
 #         away from the side wall.
 # --------------------------------------------------------
 
-async def explore(robot):
+async def explore(robot,readings,pos):
     global HAS_COLLIDED, HAS_EXPLORED, HAS_SWEPT, SENSOR2CHECK
     global ROTATION_DIR, CORNERS, DESTINATION, ARRIVAL_THRESHOLD
     global SPEED, ROBOT_MOVE_DISTANCE
-    pass
+    
+    middle = readings[3]
+    dist = 4095 / (middle + 1)
+    sidesens = readings[SENSOR2CHECK]
+    sidedist = 4095 / (sidesens + 1)
+    if dist <= 10:
+        CORNERS.append(pos)
+        if len(CORNERS) == 4:
+            HAS_EXPLORED = True
+    if sidedist <= 5 or sidedist > 10:
+        
+    
+            
+
 
 
 

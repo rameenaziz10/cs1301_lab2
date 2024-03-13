@@ -1,8 +1,8 @@
 from irobot_edu_sdk.backend.bluetooth import Bluetooth
 from irobot_edu_sdk.robots import event, hand_over, Color, Robot, Root, Create3
 from irobot_edu_sdk.music import Note
-
-robot = Create3(Bluetooth())   # Put robot name here.
+name = "BAYMAX"
+robot = Create3(Bluetooth(name))   # Put robot name here.
 
 # IR Sensor Angles
 IR_ANGLES = [-65.3, -38.0, -20.0, -3.0, 14.25, 34.0, 65.3]
@@ -13,15 +13,21 @@ IR_ANGLES = [-65.3, -38.0, -20.0, -3.0, 14.25, 34.0, 65.3]
 # when any button or bumper is pressed.
 # --------------------------------------------------------
 
+#GLOBALS
+BUTTONPRESS = False
+
 # EITHER BUTTON
 @event(robot.when_touched, [True, True])  # User buttons: [(.), (..)]
 async def when_either_touched(robot):
-    pass
+    global BUTTONPRESS
+    BUTTONPRESS = True
+    
 
 # EITHER BUMPER
 @event(robot.when_bumped, [True, True])  # [left, right]
 async def when_either_bumped(robot):
-    pass
+    global BUTTONPRESS
+    BUTTONPRESS = True
 
 # --------------------------------------------------------
 # Implement robotPong() so that the robot:
@@ -40,21 +46,26 @@ async def robotPong(robot):
     Use the following two lines somewhere in your code to calculate the
     angle and direction of reflection from a list of IR readings:
     """
-    speed = 15
-    ir_readings = (await robot.get_ir_proximity()).sensors
-    (approx_dist, approx_angle) = angleOfClosestWall(ir_readings)
-    (direction, turningAngle) = calculateReflectionAngle(approx_angle)
-    if approx_dist < 20:
-        await robot.set_wheel_speeds(0,0)
-        await robot.set_lights_rgb(255,0,255)
-        if direction == "right":
-            await robot.turn_right(turningAngle)
-        if direction == "left":
-            await robot.turn_left(turningAngle)
-        await robot.move(5)
-    else:
-        await robot.set_lights_rgb(0,255,255)
-        await robot.set_wheel_speeds(speed, speed)
+    while not BUTTONPRESS:
+        speed = 15
+        if BUTTONPRESS:
+            await robot.set_lights_rgb(255,0,0)
+            await robot.set_wheel_speeds(0,0)
+        ir_readings = (await robot.get_ir_proximity()).sensors
+        (approx_dist, approx_angle) = angleOfClosestWall(ir_readings)
+        (direction, turningAngle) = calculateReflectionAngle(approx_angle)
+        if approx_dist < 20:
+            await robot.set_wheel_speeds(0,0)
+            await robot.set_lights_rgb(255,0,255)
+            if direction == "right":
+                await robot.turn_right(turningAngle)
+            if direction == "left":
+                await robot.turn_left(turningAngle)
+        else:
+            await robot.set_lights_rgb(0,255,255)
+            await robot.set_wheel_speeds(speed, speed)
+        
+
 
 
     """
@@ -62,7 +73,7 @@ async def robotPong(robot):
     direction and the turningAngle to determine how to rotate the robot to
     reflect.
     """
-    pass
+    
 
 def angleOfClosestWall(readings):
     IR_ANGLES = [-65.3, -38.0, -20.0, -3.0, 14.25, 34.0, 65.3]
