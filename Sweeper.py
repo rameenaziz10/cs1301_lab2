@@ -3,7 +3,7 @@ from irobot_edu_sdk.robots import event, hand_over, Color, Robot, Root, Create3
 from irobot_edu_sdk.music import Note
 import math as m
 
-robot = Create3(Bluetooth())   # Put robot name here.
+robot = Create3(Bluetooth("C-3PO"))   # Put robot name here.
 
 # --------------------------------------------------------
 # Global Variables - feel free to add your own as necessary
@@ -57,6 +57,7 @@ def farthestDistance(currPosition, positions):
 def movementDirection(readings):
     max = 0
     sensorIndex = -1
+    direc = "clockwise"
     for i in range(len(readings)):
         if readings[i] >= 20:
             if readings[i] > max:
@@ -66,7 +67,7 @@ def movementDirection(readings):
         direc = "clockwise"                            
             
     elif sensorIndex in [4,5,6]:  
-        direc = "counterclockwise"    
+        direc = "counterclockwise" 
     return direc        
             
 
@@ -96,8 +97,8 @@ async def when_either_touched(robot):
 # EITHER BUMPER
 @event(robot.when_bumped, [True, True])  # [left, right]
 async def when_either_bumped(robot):
-    global BUTTONPRESS
-    BUTTONPRESS = True
+    global HAS_COLLIDED
+    HAS_COLLIDED = True
 
 
 # --------------------------------------------------------
@@ -121,26 +122,41 @@ async def play(robot):
     global ROTATION_DIR, CORNERS, DESTINATION, ARRIVAL_THRESHOLD
     global SPEED, ROBOT_MOVE_DISTANCE
     #find position and sensor readings % reset navigation
-    pos = await robot.get_position()
     readings = (await robot.get_ir_proximity()).sensors
-    await robot.reset_navigation()
-    #assign global variables based off of proximity to walls
     ROTATION_DIR = movementDirection(readings)
     if ROTATION_DIR == "clockwise":
         SENSOR2CHECK = 0
     else:
         SENSOR2CHECK = 6
+    await robot.reset_navigation()
+    #assign global variables based off of proximity to walls
+    
     #set wheel speed
-    await robot.wheel_speeds(SPEED, SPEED)
+    await robot.set_wheel_speeds(SPEED, SPEED)
     #use explore and sweep functions
     while not HAS_EXPLORED:
+        current_position = await robot.get_position()
+        first, second, heading = current_position.x, current_position.y, current_position.heading
+        pos = first, second
+        readings = (await robot.get_ir_proximity()).sensors
+        
+        if HAS_COLLIDED:
+            await robot.set_wheel_speeds(0,0)
+            break
         await explore(robot,readings,pos)
-        if HAS_COLLIDED or checkPositionArrived(pos, DESTINATION, ARRIVAL_THRESHOLD):
-            break
+        if HAS_EXPLORED:
+            await robot.set_wheel_speeds(0,0)
+    
     while not HAS_SWEPT:
-        await sweep()
-        if HAS_COLLIDED or checkPositionArrived(pos, DESTINATION, ARRIVAL_THRESHOLD):
+        current_position = await robot.get_position()
+        first, second, heading = current_position.x, current_position.y, current_position.heading
+        pos = first, second
+        readings = (await robot.get_ir_proximity()).sensors
+        
+        if HAS_COLLIDED:
             break
+        await sweep(robot, pos, readings)
+        
         
 
 
@@ -168,9 +184,27 @@ async def explore(robot,readings,pos):
     if dist <= 10:
         CORNERS.append(pos)
         if len(CORNERS) == 4:
+            DESTINATION = farthestDistance(pos,CORNERS)
             HAS_EXPLORED = True
+        else:
+            if ROTATION_DIR == "clockwise":
+                await robot.turn_right(90)
+            else:
+                await robot.turn_left(90)
     if sidedist <= 5 or sidedist > 10:
-        
+        if ROTATION_DIR == "clockwise":
+            if sidedist <= 5:
+                await robot.turn_right(3)
+            if sidedist > 10:
+                await robot.turn_left(3)
+        else:
+            if sidedist <= 5:
+                await robot.turn_left(3)
+            if sidedist > 10:
+                await robot.turn_right(3)
+        await robot.set_wheel_speeds(SPEED, SPEED)
+    
+
     
             
 
@@ -188,10 +222,18 @@ async def explore(robot,readings,pos):
 #         turn 90 degrees again, and start again.
 # --------------------------------------------------------
 
-async def sweep(robot): # Change tolerance for sweep and changed the baby steps
+async def sweep(robot, pos, readings): # Change tolerance for sweep and changed the baby steps
     global HAS_COLLIDED, HAS_EXPLORED, HAS_SWEPT, SENSOR2CHECK
     global ROTATION_DIR, CORNERS, DESTINATION, ARRIVAL_THRESHOLD
     global SPEED, ROBOT_MOVE_DISTANCE
+    #check if destination is reached, set color to green and play happy tune
+    if checkPositionArrived(pos, DESTINATION, ARRIVAL_THRESHOLD):
+        
+    #check if front proximity is less than 10, turn 90 degree to ? direction
+        #calculate front proximity again
+        #if greater move distance, move robotmove
+        #else 1/3 front prox
+    # turn ? direction and set wheels to speed
     pass
 
 # start the robot
