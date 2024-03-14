@@ -47,7 +47,6 @@ def farthestDistance(currPosition, positions):
     for tup in positions:
         x2, y2 = tup
         distance = m.sqrt(m.fabs((x2 - x1)**2  + (y2 - y1)**2))
-        print(distance)
         if distance > maxdist:
             maxdist = distance
             maxpos = x2, y2
@@ -156,6 +155,7 @@ async def play(robot):
         if HAS_COLLIDED:
             break
         await sweep(robot, pos, readings)
+    print('epic sauce')
         
         
 
@@ -226,15 +226,38 @@ async def sweep(robot, pos, readings): # Change tolerance for sweep and changed 
     global HAS_COLLIDED, HAS_EXPLORED, HAS_SWEPT, SENSOR2CHECK
     global ROTATION_DIR, CORNERS, DESTINATION, ARRIVAL_THRESHOLD
     global SPEED, ROBOT_MOVE_DISTANCE
-    #check if destination is reached, set color to green and play happy tune
+    middle = readings[3]
+    dist = 4095 / (middle + 1)
     if checkPositionArrived(pos, DESTINATION, ARRIVAL_THRESHOLD):
+        await robot.set_wheel_speeds(0,0)
+        await robot.set_lights_rgb(0,255,0)
+        await robot.play_note(Note.A4, .5)
+        await robot.play_note(Note.B4, .5)
+        await robot.play_note(Note.C5, .5)
+        await robot.play_note(Note.G6, .5)
+        HAS_SWEPT = True
+    else:
+        if dist <= 10:
+            if ROTATION_DIR == "clockwise":
+                await robot.turn_right(90)
+                ROTATION_DIR = "counter-clockwise"
+            else:
+                await robot.turn_left(90)
+                ROTATION_DIR = "clockwise"
+            readings = (await robot.get_ir_proximity()).sensors
+            middle = readings[3]
+            dist = 4095 / (middle + 1)
+            if dist < ROBOT_MOVE_DISTANCE:
+                await robot.move((1/3) * dist)
+            else:
+                await robot.move(ROBOT_MOVE_DISTANCE)
+            if ROTATION_DIR == "clockwise":
+                await robot.turn_left(90)
+            else:
+                await robot.turn_right(90)
+        await robot.set_wheel_speeds(SPEED,SPEED)
         
-    #check if front proximity is less than 10, turn 90 degree to ? direction
-        #calculate front proximity again
-        #if greater move distance, move robotmove
-        #else 1/3 front prox
-    # turn ? direction and set wheels to speed
-    pass
+
 
 # start the robot
 robot.play()
