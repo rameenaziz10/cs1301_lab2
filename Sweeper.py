@@ -33,7 +33,7 @@ SPEED = 10               # The speed at which the robot should normally move.
 ROBOT_MOVE_DISTANCE = 15 # The distance by which the robot needs to move 
                          # to the side to sweep a new column of the box.
 BUTTONPRESS = False
-
+AT_ORIGIN = False
 # --------------------------------------------------------
 # Implement these three helper functions so that they
 # can be used later on.
@@ -134,28 +134,33 @@ async def play(robot):
     await robot.set_wheel_speeds(SPEED, SPEED)
     #use explore and sweep functions
     while not HAS_EXPLORED:
-        current_position = await robot.get_position()
-        first, second, heading = current_position.x, current_position.y, current_position.heading
-        pos = first, second
-        readings = (await robot.get_ir_proximity()).sensors
         
         if HAS_COLLIDED:
             await robot.set_wheel_speeds(0,0)
             break
-        await explore(robot,readings,pos)
+        await explore(robot)
         if HAS_EXPLORED:
             await robot.set_wheel_speeds(0,0)
+            print("finished exploring!")
     
     while not HAS_SWEPT:
-        current_position = await robot.get_position()
-        first, second, heading = current_position.x, current_position.y, current_position.heading
-        pos = first, second
-        readings = (await robot.get_ir_proximity()).sensors
-        
         if HAS_COLLIDED:
+            await robot.set_wheel_speeds(0,0)
             break
-        await sweep(robot, pos, readings)
-    print('epic sauce')
+        await sweep(robot)
+        if HAS_SWEPT: 
+            print("finished sweeping")
+    while not AT_ORIGIN:
+        if HAS_COLLIDED:
+            await robot.set_wheel_speeds(0,0)
+            break
+        await getToOrigin(robot)
+    if AT_ORIGIN:
+        current_position = await robot.get_position()
+        pos = current_position.x, current_position.y
+        print(pos)
+        print("welcome back")
+        await robot.turn_right(360)
         
         
 
@@ -172,16 +177,20 @@ async def play(robot):
 #         away from the side wall.
 # --------------------------------------------------------
 
-async def explore(robot,readings,pos):
+async def explore(robot):
     global HAS_COLLIDED, HAS_EXPLORED, HAS_SWEPT, SENSOR2CHECK
     global ROTATION_DIR, CORNERS, DESTINATION, ARRIVAL_THRESHOLD
     global SPEED, ROBOT_MOVE_DISTANCE
+    current_position = await robot.get_position()
+    pos = current_position.x, current_position.y
+    readings = (await robot.get_ir_proximity()).sensors
     
     middle = readings[3]
     dist = 4095 / (middle + 1)
-    sidesens = readings[SENSOR2CHECK]
-    sidedist = 4095 / (sidesens + 1)
+    
     if dist <= 10:
+
+        await robot.set_wheel_speeds(0,0)
         CORNERS.append(pos)
         if len(CORNERS) == 4:
             DESTINATION = farthestDistance(pos,CORNERS)
@@ -191,6 +200,10 @@ async def explore(robot,readings,pos):
                 await robot.turn_right(90)
             else:
                 await robot.turn_left(90)
+
+        await robot.set_wheel_speeds(SPEED,SPEED)
+    sidesens = readings[SENSOR2CHECK]
+    sidedist = 4095 / (sidesens + 1)
     if sidedist <= 5 or sidedist > 10:
         if ROTATION_DIR == "clockwise":
             if sidedist <= 5:
@@ -222,10 +235,16 @@ async def explore(robot,readings,pos):
 #         turn 90 degrees again, and start again.
 # --------------------------------------------------------
 
-async def sweep(robot, pos, readings): # Change tolerance for sweep and changed the baby steps
+async def sweep(robot): # Change tolerance for sweep and changed the baby steps
     global HAS_COLLIDED, HAS_EXPLORED, HAS_SWEPT, SENSOR2CHECK
     global ROTATION_DIR, CORNERS, DESTINATION, ARRIVAL_THRESHOLD
     global SPEED, ROBOT_MOVE_DISTANCE
+    current_position = await robot.get_position()
+    pos = current_position.x, current_position.y
+    readings = (await robot.get_ir_proximity()).sensors
+    
+    middle = readings[3]
+    dist = 4095 / (middle + 1)
     middle = readings[3]
     dist = 4095 / (middle + 1)
     if checkPositionArrived(pos, DESTINATION, ARRIVAL_THRESHOLD):
@@ -238,6 +257,7 @@ async def sweep(robot, pos, readings): # Change tolerance for sweep and changed 
         HAS_SWEPT = True
     else:
         if dist <= 10:
+            await robot.set_wheel_speeds(0,0)
             if ROTATION_DIR == "clockwise":
                 await robot.turn_right(90)
                 ROTATION_DIR = "counter-clockwise"
@@ -247,7 +267,7 @@ async def sweep(robot, pos, readings): # Change tolerance for sweep and changed 
             readings = (await robot.get_ir_proximity()).sensors
             middle = readings[3]
             dist = 4095 / (middle + 1)
-            if dist < ROBOT_MOVE_DISTANCE:
+            if dist <  ROBOT_MOVE_DISTANCE:
                 await robot.move((1/3) * dist)
             else:
                 await robot.move(ROBOT_MOVE_DISTANCE)
@@ -256,7 +276,50 @@ async def sweep(robot, pos, readings): # Change tolerance for sweep and changed 
             else:
                 await robot.turn_right(90)
         await robot.set_wheel_speeds(SPEED,SPEED)
+async def getToOrigin(robot):
+    global HAS_COLLIDED, HAS_EXPLORED, HAS_SWEPT, SENSOR2CHECK
+    global ROTATION_DIR, CORNERS, DESTINATION, ARRIVAL_THRESHOLD
+    global SPEED, ROBOT_MOVE_DISTANCE, AT_ORIGIN
+    await robot.set_wheel_speeds(SPEED,SPEED)
+    
+    current_position = await robot.get_position()
+    pos = current_position.x, current_position.y
+    readings = (await robot.get_ir_proximity()).sensors
+    ROTATION_DIR = movementDirection(readings)
+    middle = readings[3]
+    dist = 4095 / (middle + 1)
+    if dist < 10:
+        await robot.set_wheel_speeds(0,0)
+        if ROTATION_DIR == "clockwise":
+            await robot.turn_right(90)
+        else:
+            await robot.turn_left(90)
+        await robot.set_wheel_speeds(SPEED,SPEED)
+    if checkPositionArrived(pos, (0,0), ARRIVAL_THRESHOLD):
+        await robot.set_wheel_speeds(0,0)
+        await robot.set_lights_spin_rgb(0, 255, 0)
+        await robot.play_note(Note.E4, .2)
+        await robot.play_note(Note.E4, .2)
+        await robot.play_note(Note.E4, .4)
+        await robot.play_note(Note.E4, .2)
+        await robot.play_note(Note.E4, .2)
+        await robot.play_note(Note.E4, .4)
+        await robot.play_note(Note.E4, .2)
+        await robot.play_note(Note.G4, .2)
+        await robot.play_note(Note.C4, .2)
+        await robot.play_note(Note.D4, .2)
+        await robot.play_note(Note.E4, .8)
         
+        
+        
+        AT_ORIGIN = True
+    
+
+
+
+
+
+    
 
 
 # start the robot

@@ -1,3 +1,4 @@
+from time import perf_counter
 def angleOfClosestWall(readings):
     """Remember that this function can be autograded!"""
     IR_ANGLES = [-65.3, -38.0, -20.0, -3.0, 14.25, 34.0, 65.3]
@@ -50,6 +51,7 @@ def movementDirection(readings):
     return direc
 
 def checkPositionArrived(current_position, destination, threshold):
+    
     x1, y1 = current_position
     x2, y2 = destination
     distance = m.sqrt(m.fabs((x2 - x1)**2  + (y2 - y1)**2))
@@ -57,3 +59,8 @@ def checkPositionArrived(current_position, destination, threshold):
         return True
     else:
         return False
+time1 = perf_counter()
+print(checkPositionArrived((7,2), (0,0), 5))
+time2 = perf_counter()
+timeelapsed = time2 - time1
+print(timeelapsed)
