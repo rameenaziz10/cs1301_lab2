@@ -2,8 +2,8 @@ from irobot_edu_sdk.backend.bluetooth import Bluetooth
 from irobot_edu_sdk.robots import event, hand_over, Color, Robot, Root, Create3
 from irobot_edu_sdk.music import Note
 import math as m
-
-robot = Create3(Bluetooth("C-3PO"))   # Put robot name here.
+name = "XJ-9"
+robot = Create3(Bluetooth(name))   # Put robot name here.
 
 # --------------------------------------------------------
 # Global Variables - feel free to add your own as necessary
@@ -89,8 +89,8 @@ def checkPositionArrived(current_position, destination, threshold):
 # EITHER BUTTON
 @event(robot.when_touched, [True, True])  # User buttons: [(.), (..)]
 async def when_either_touched(robot):
-    global BUTTONPRESS
-    BUTTONPRESS = True
+    global HAS_COLLIDED
+    HAS_COLLIDED = True
     
 
 # EITHER BUMPER
@@ -137,6 +137,8 @@ async def play(robot):
         
         if HAS_COLLIDED:
             await robot.set_wheel_speeds(0,0)
+            await robot.set_lights_rgb(255,0,0)
+            print('collided :(')
             break
         await explore(robot)
         if HAS_EXPLORED:
@@ -146,15 +148,26 @@ async def play(robot):
     while not HAS_SWEPT:
         if HAS_COLLIDED:
             await robot.set_wheel_speeds(0,0)
+            await robot.set_lights_rgb(255,0,0)
+            print('collided :(')
             break
         await sweep(robot)
         if HAS_SWEPT: 
             print("finished sweeping")
+    readings = (await robot.get_ir_proximity()).sensors
+    ROTATION_DIR = movementDirection(readings)
+    if ROTATION_DIR == "clockwise":
+        SENSOR2CHECK = 0
+    else:
+        SENSOR2CHECK = 6
     while not AT_ORIGIN:
         if HAS_COLLIDED:
             await robot.set_wheel_speeds(0,0)
+            await robot.set_lights_rgb(255,0,0)
+            print('collided :(')
             break
-        await getToOrigin(robot)
+        else:
+            await getToOrigin(robot)
     if AT_ORIGIN:
         current_position = await robot.get_position()
         pos = current_position.x, current_position.y
@@ -250,10 +263,10 @@ async def sweep(robot): # Change tolerance for sweep and changed the baby steps
     if checkPositionArrived(pos, DESTINATION, ARRIVAL_THRESHOLD):
         await robot.set_wheel_speeds(0,0)
         await robot.set_lights_rgb(0,255,0)
-        await robot.play_note(Note.A4, .5)
-        await robot.play_note(Note.B4, .5)
-        await robot.play_note(Note.C5, .5)
-        await robot.play_note(Note.G6, .5)
+        await robot.play_note(Note.D5, .5)
+        await robot.play_note(Note.F5_SHARP, .5)
+        await robot.play_note(Note.A5, .5)
+        await robot.play_note(Note.D6, .5)
         HAS_SWEPT = True
     else:
         if dist <= 10:
@@ -276,6 +289,11 @@ async def sweep(robot): # Change tolerance for sweep and changed the baby steps
             else:
                 await robot.turn_right(90)
         await robot.set_wheel_speeds(SPEED,SPEED)
+
+
+
+
+
 async def getToOrigin(robot):
     global HAS_COLLIDED, HAS_EXPLORED, HAS_SWEPT, SENSOR2CHECK
     global ROTATION_DIR, CORNERS, DESTINATION, ARRIVAL_THRESHOLD
@@ -285,8 +303,23 @@ async def getToOrigin(robot):
     current_position = await robot.get_position()
     pos = current_position.x, current_position.y
     readings = (await robot.get_ir_proximity()).sensors
-    ROTATION_DIR = movementDirection(readings)
+    
     middle = readings[3]
+    sidesens = readings[SENSOR2CHECK]
+    sidedist = 4095 / (sidesens + 1)
+    if sidedist <= 5 or sidedist > 10:
+        await robot.set_wheel_speeds(0,0)
+        if ROTATION_DIR == "clockwise":
+            if sidedist <= 5:
+                await robot.turn_right(3)
+            if sidedist > 10:
+                await robot.turn_left(3)
+        else:
+            if sidedist <= 5:
+                await robot.turn_left(3)
+            if sidedist > 10:
+                await robot.turn_right(3)
+        await robot.set_wheel_speeds(SPEED, SPEED)
     dist = 4095 / (middle + 1)
     if dist < 10:
         await robot.set_wheel_speeds(0,0)
@@ -295,20 +328,22 @@ async def getToOrigin(robot):
         else:
             await robot.turn_left(90)
         await robot.set_wheel_speeds(SPEED,SPEED)
+    current_position = await robot.get_position()
+    pos = current_position.x, current_position.y
     if checkPositionArrived(pos, (0,0), ARRIVAL_THRESHOLD):
         await robot.set_wheel_speeds(0,0)
         await robot.set_lights_spin_rgb(0, 255, 0)
-        await robot.play_note(Note.E4, .2)
-        await robot.play_note(Note.E4, .2)
-        await robot.play_note(Note.E4, .4)
-        await robot.play_note(Note.E4, .2)
-        await robot.play_note(Note.E4, .2)
-        await robot.play_note(Note.E4, .4)
-        await robot.play_note(Note.E4, .2)
-        await robot.play_note(Note.G4, .2)
-        await robot.play_note(Note.C4, .2)
-        await robot.play_note(Note.D4, .2)
-        await robot.play_note(Note.E4, .8)
+        await robot.play_note(Note.E5, .2)
+        await robot.play_note(Note.E5, .2)
+        await robot.play_note(Note.E5, .4)
+        await robot.play_note(Note.E5, .2)
+        await robot.play_note(Note.E5, .2)
+        await robot.play_note(Note.E5, .4)
+        await robot.play_note(Note.E5, .2)
+        await robot.play_note(Note.G5, .2)
+        await robot.play_note(Note.C5, .2)
+        await robot.play_note(Note.D5, .2)
+        await robot.play_note(Note.E5, .8)
         
         
         
