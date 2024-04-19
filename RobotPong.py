@@ -1,7 +1,7 @@
 from irobot_edu_sdk.backend.bluetooth import Bluetooth
 from irobot_edu_sdk.robots import event, hand_over, Color, Robot, Root, Create3
 from irobot_edu_sdk.music import Note
-name = "BAYMAX"
+name = "R2-D2"
 robot = Create3(Bluetooth(name))   # Put robot name here.
 
 # IR Sensor Angles
@@ -42,15 +42,14 @@ async def when_either_bumped(robot):
 
 @event(robot.when_play)
 async def robotPong(robot):
+    global BUTTONPRESS
     """
     Use the following two lines somewhere in your code to calculate the
     angle and direction of reflection from a list of IR readings:
     """
     while not BUTTONPRESS:
         speed = 15
-        if BUTTONPRESS:
-            await robot.set_lights_rgb(255,0,0)
-            await robot.set_wheel_speeds(0,0)
+        
         ir_readings = (await robot.get_ir_proximity()).sensors
         (approx_dist, approx_angle) = angleOfClosestWall(ir_readings)
         (direction, turningAngle) = calculateReflectionAngle(approx_angle)
@@ -64,6 +63,9 @@ async def robotPong(robot):
         else:
             await robot.set_lights_rgb(0,255,255)
             await robot.set_wheel_speeds(speed, speed)
+        if BUTTONPRESS:
+            await robot.set_lights_rgb(255,0,0)
+            await robot.set_wheel_speeds(0,0)
         
 
 
